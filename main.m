@@ -3,11 +3,10 @@ clear;
 
 %% cropping input images
 
-datadir     = 'results/DeepLens/Depth_est';    %the directory containing the images
-gtdir       = 'img/IBMS1/Depth';    %the directory containing the images
-resultsdir  = 'results/DeepLens/Cropped_Estimation'; %the directory for dumping results
+datadir     = 'img/RedWeb/Images';    %the directory containing the images
+resultsdir  = 'img/RedWeb/Images_cropped'; %the directory for dumping results
 
-imglist = dir(sprintf('%s/*.png', datadir));
+imglist = dir(sprintf('%s/*.jpg', datadir));
 rows=3;
 columns=2;
 
@@ -34,9 +33,7 @@ for i = 1:numel(imglist)
                 croppedImg=img(j*blwidth+1:end,k*blheight+1:end,:);
             end
                    
-            
-            
-                
+              
             fname = sprintf('%s/%s_%d_%d.png', resultsdir, imgname,j,k);
             imwrite(croppedImg, fname);
             
