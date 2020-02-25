@@ -5,26 +5,21 @@ clear;
 
 visualize=true;
 
-select=1;
+select=3;
 datasets=["RedWeb","DeepLens","IBMS1"];
 
 datadir_cropped     = sprintf('results/%s/Depth_est_cropped',datasets(select)); 
 cropped_datadir     = sprintf('results/%s/Cropped_Estimation',datasets(select));
 gtdir       = sprintf('img/%s/Depth_cropped',datasets(select)); 
-
-DeepLens_datadir_cropped     = 'results/DeepLens/Depth_est_cropped';  
-DeepLens_cropped_datadir     = 'results/DeepLens/Cropped_Estimation';
-DeepLens_gtdir       = 'img/DeepLens/Depth_cropped'; 
+cropped_imgdir       = sprintf('img/%s/Images_cropped',datasets(select)); 
 
 resultsdir  = 'results'; %the directory for dumping results
 
 gtlist=dir(sprintf('%s/*.png', gtdir));
-img_croppedlist = dir(sprintf('%s/*.png', datadir_cropped));
-cropped_imagelist=dir(sprintf('%s/*.png', cropped_datadir));
+depth_cropped_list = dir(sprintf('%s/*.png', datadir_cropped));
+cropped_depth_list=dir(sprintf('%s/*.png', cropped_datadir));
+cropped_image_list=dir(sprintf('%s/*.png', cropped_imgdir));
 
-DeepLens_gtlist=dir(sprintf('%s/*.png', DeepLens_gtdir));
-DeepLens_img_croppedlist = dir(sprintf('%s/*.png', DeepLens_datadir_cropped));
-DeepLens_cropped_imagelist = dir(sprintf('%s/*.png', DeepLens_cropped_datadir));
 
 RMSE_error_cropped=[];
 RMSE_cropped_error=[];
@@ -39,25 +34,33 @@ MI_cropped_error=[];
 for i = 1:numel(gtlist)
     
     % IBMS1 Load Data
+    
+    image = double(imread(sprintf('%s/%s', cropped_imgdir, cropped_image_list(i).name)));
+    image = image*256;
+    
     gt = double(imread(sprintf('%s/%s', gtdir, gtlist(i).name)));
-    
-    if select==1 %% redWeb is uint8
-        gtNorm =gt*256;
+    if(size(gt,3)==3)
+      gt = gt(:,:,1);
     end
-    gtNorm = 65535 - gtNorm;
-    %%gtNorm = rescale(gtNorm,0,65535);
+    if select==1 || select==3 %% redWeb is uint8
+        if select==1
+            gt =gt*256;
+        end
+       gt = 65535 - gt;
+    end
+    gtNorm = gt;
     
-    est_cropped = double(imread(sprintf('%s/%s', datadir_cropped, img_croppedlist(i).name)));
+    est_cropped = double(imread(sprintf('%s/%s', datadir_cropped, depth_cropped_list(i).name)));
     est_cropped_Norm = est_cropped;
-    %est_cropped_Norm = rescale(est_cropped_Norm,0,65535);
     %est_cropped_Norm = mapper(est_cropped_Norm,gtNorm);
+    %est_cropped_Norm = double(imhistmatch(uint16(est_cropped_Norm),uint16(gtNorm))); 
     gtNorm = mapper(gtNorm,est_cropped_Norm);
+    gtNorm = double(imhistmatch(uint16(gtNorm),uint16(est_cropped_Norm)));
 
-    cropped_est = double(imread(sprintf('%s/%s', cropped_datadir, cropped_imagelist(i).name)));
+    cropped_est = double(imread(sprintf('%s/%s', cropped_datadir, cropped_depth_list(i).name)));
     cropped_est_Norm = cropped_est;
-    %cropped_est_Norm = rescale(cropped_est_Norm,0,65535);
     cropped_est_Norm = mapper(cropped_est_Norm,est_cropped_Norm);
-    
+    cropped_est_Norm = double(imhistmatch(uint16(cropped_est_Norm),uint16(est_cropped_Norm)));
     % IBMS1 Error
     
     % RMSE
@@ -80,9 +83,37 @@ for i = 1:numel(gtlist)
 
     % SSIM
     
-    [est_cropped_SSIM_error,est_cropped_SSIM_map] = ssim(est_cropped_Norm,gtNorm);
-    [cropped_est_SSIM_error,cropped_est_SSIM_map] = ssim(cropped_est_Norm,gtNorm);
+%     pts_gt  =                detectSURFFeatures(uint16(gtNorm),'MetricThreshold',0,'NumOctaves',3,'NumScaleLevels',10);
+%     pts_estimation_cropped = detectSURFFeatures(uint16(est_cropped_Norm),'MetricThreshold',0,'NumOctaves',3,'NumScaleLevels',10);
+%     pts_cropped_estimation = detectSURFFeatures(uint16(cropped_est_Norm),'MetricThreshold',0,'NumOctaves',3,'NumScaleLevels',10);
+%     
+%     [features_gt,  validPts_gt]  = extractFeatures(uint16(gtNorm),  pts_gt);
+%     [features_estimation_cropped, validPts_estimation_cropped] = extractFeatures(uint16(est_cropped_Norm),pts_estimation_cropped);
+%     [features_cropped_estimation, validPts_cropped_estimation] = extractFeatures(uint16(cropped_est_Norm),pts_cropped_estimation);
+%     
+%     indexPairs_estimation_cropped = matchFeatures(features_gt, features_estimation_cropped);
+%     indexPairs_cropped_estimation = matchFeatures(features_gt, features_cropped_estimation);
+%     
+%     matched_gt_est_cropped  =  validPts_gt(indexPairs_estimation_cropped(:,1));
+%     matched_est_cropped = validPts_estimation_cropped(indexPairs_estimation_cropped(:,2));
+% 
+%     matched_gt_cropped_est  = validPts_gt(indexPairs_cropped_estimation(:,1));
+%     matched_cropped_est =  validPts_cropped_estimation(indexPairs_cropped_estimation(:,2));
+%     
+%     if visualize && i==10
+%         figure;
+%         showMatchedFeatures(uint16(gtNorm),uint16(est_cropped_Norm),matched_gt_est_cropped,matched_est_cropped,'montage');
+% 
+%         figure;
+%         showMatchedFeatures(uint16(gtNorm),uint16(cropped_est_Norm),matched_gt_cropped_est,matched_cropped_est,'montage');
+%     end
     
+
+    [~,est_cropped_SSIM_map] = ssim(est_cropped_Norm,gtNorm);
+    [~,cropped_est_SSIM_map] = ssim(cropped_est_Norm,gtNorm);
+    
+    [est_cropped_SSIM_error, cropped_est_SSIM_error]= DDR(gt,est_cropped,cropped_est,image);
+
     SSIM_error_cropped=[SSIM_error_cropped,est_cropped_SSIM_error];
     SSIM_cropped_error=[SSIM_cropped_error,cropped_est_SSIM_error];
     %MI 
@@ -95,44 +126,44 @@ for i = 1:numel(gtlist)
     MI_cropped_error=[MI_cropped_error,cropped_est_MI_error];
     
     % IBMS1 Visualization
-    if visualize && i==3
+    if est_cropped_SSIM_error>cropped_est_SSIM_error
         figure('Name',sprintf('%s Middle outputs',datasets(select)))
         montage({uint16(gtNorm),uint16(est_cropped_Norm), uint16(cropped_est_Norm),uint16(gt),uint16(abs(est_cropped_RMSE_error_image)),uint16(abs(cropped_est_RMSE_error_image)),uint16(est_cropped),est_cropped_SSIM_map,cropped_est_SSIM_map},'Size',[3 3]);
 %         figure('name','Histogram Gt')
 %         histogram(gtNorm)
 %         figure('name','Histogram Cropped Depth')
-%         histogram(cropped_est)
+%         histogram(cropped_est_Norm)
 %         figure('name','Histogram Depth of Cropped')
-%         histogram(est_cropped)
+%         histogram(est_cropped_Norm)
     end
       
 end
 
-%% IBMS1 ERROR VISUALIZATION
+%%ERROR VISUALIZATION
 figure('Name',sprintf('%s',datasets(select)))
 subplot(2,2,1);
 bar(1:length(RMSE_error_cropped),RMSE_error_cropped,'g');
 hold on
 bar(1:length(RMSE_cropped_error),RMSE_cropped_error, 'r');
-title(sprintf('RMSE Performance: %0.1f',length(find(RMSE_error_cropped < RMSE_cropped_error))/length(gtlist)*100));
+title(sprintf('RMSE Performance: %0.1f',length(find(RMSE_error_cropped <= RMSE_cropped_error))/length(gtlist)*100));
 
 subplot(2,2,2);
 bar(1:length(PSNR_error_cropped),PSNR_error_cropped,'g');
 hold on
 bar(1:length(PSNR_cropped_error),PSNR_cropped_error, 'r');
-title(sprintf('PSNR Performance: %0.1f',length(find(PSNR_error_cropped < PSNR_cropped_error))/length(gtlist)*100));
+title(sprintf('PSNR Performance: %0.1f',length(find(PSNR_error_cropped <= PSNR_cropped_error))/length(gtlist)*100));
 
 subplot(2,2,3);
 bar(1:length(SSIM_error_cropped),SSIM_error_cropped,'g');
 hold on
 bar(1:length(SSIM_cropped_error),SSIM_cropped_error, 'r');
-title(sprintf('SSIM Performance: %0.1f',length(find(SSIM_error_cropped > SSIM_cropped_error))/length(gtlist)*100));
+title(sprintf('SSIM Performance: %0.1f',length(find(SSIM_error_cropped <= SSIM_cropped_error))/length(gtlist)*100));
 
 subplot(2,2,4);
 bar(1:length(MI_error_cropped),MI_error_cropped,'g');
 hold on
 bar(1:length(MI_cropped_error),MI_cropped_error, 'r');
-title(sprintf('MI Performance: %0.1f',length(find(MI_error_cropped > MI_cropped_error))/length(gtlist)*100));
+title(sprintf('MI Performance: %0.1f',length(find(MI_error_cropped >= MI_cropped_error))/length(gtlist)*100));
 
 
 
