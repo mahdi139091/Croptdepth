@@ -3,10 +3,10 @@ clear;
 
 %% cropping input images
 
-datadir     = 'img/RedWeb/Images';    %the directory containing the images
-resultsdir  = 'img/RedWeb/Images_cropped'; %the directory for dumping results
+datadir     = 'results/RedWeb/Depth_est';    %the directory containing the images
+resultsdir  = 'results/RedWeb/Cropped_Estimation'; %the directory for dumping results
 
-imglist = dir(sprintf('%s/*.jpg', datadir));
+imglist = dir(sprintf('%s/*.png', datadir));
 rows=3;
 columns=2;
 

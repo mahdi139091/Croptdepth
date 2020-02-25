@@ -8,7 +8,7 @@ gt_flat = reshape(gt', [size(gt,1)*size(gt,2) 1]);
 X = [ones(size(estimation_flat)) estimation_flat];
 b = X\gt_flat;    % Removes NaN data
 
-output =  round(b(1) + estimation.*b(2));
+output =  b(1) + estimation.*b(2);
 
 minval = min(gt,[],'all');
 maxval = max(gt,[],'all');
