@@ -1,0 +1,46 @@
+clc;
+clear;
+
+datadir     = '../img/DeepLens/Images';    %the directory containing the images
+gtdir       = '../img/DeepLens/Depth';    %the directory containing the images
+resultsdir  = '../results'; %the directory for dumping results
+
+imglist = dir(sprintf('%s/*.png', datadir));
+rows=3;
+columns=2;
+
+for i = 1:numel(imglist)
+    
+    %read in images%
+    [path, imgname, dummy] = fileparts(imglist(i).name);
+    img = imread(sprintf('%s/%s', datadir, imglist(i).name));
+    
+    [width,height]=size(img);
+    blwidth=round(width/columns);
+    blheight=round(height/rows);
+    
+    for j = 0:columns-1
+        for k = 0:rows-1
+            
+            if(j~=columns-1 && k~=row-1)
+                croppedImg=img(j*blwidth+1:end,k*blheight+1:(k+1)*blheight+1);
+            elseif(j==columns-1 && k~=row-1)
+                croppedImg=img(j*blwidth+1:(j+1)*blwidth+1,k*blheight+1:(k+1)*blheight+1);  
+            elseif(j==columns-1 && k~=row-1)
+                croppedImg=img(j*blwidth+1:(j+1)*blwidth+1,k*blheight+1:(k+1)*blheight+1);
+            else
+                croppedImg=img(j*blwidth+1:(j+1)*blwidth+1,k*blheight+1:(k+1)*blheight+1);
+            end
+                   
+            
+            
+                
+            fname = sprintf('%s/%s_%s_%s.png', resultsdir, imgname,j,k);
+            imwrite(croppedImg, fname);
+            
+        end
+    end
+
+  
+    
+end
