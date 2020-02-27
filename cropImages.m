@@ -1,5 +1,4 @@
-clc;
-clear;
+function cropImages(directory)
 
 %% cropping input images
 
@@ -43,7 +42,6 @@ for i = 1:numel(imglist)
             imshow(croppedImg)
         end
     end
-
-  
-    
 end
+
+
