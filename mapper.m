@@ -1,30 +1,31 @@
-function output = mapper(estimation,gt)
+function output = mapper(input1,input2)
 %MAPPER Summary of this function goes here
 %   Detailed explanation goes here
 
-estimation_flat = reshape(estimation', [size(estimation,1)*size(estimation,2) 1]);
-gt_flat = reshape(gt', [size(gt,1)*size(gt,2) 1]);
+est_rang = max(input2(:)) - min(input2(:));
 
-X = [ones(size(estimation_flat)) estimation_flat];
-b = X\gt_flat;    % Removes NaN data
+input1_cropped = input1(input2>min(input2(:)')+0.2*est_rang & input2<max(input2(:))-0.2*est_rang);
+input2_cropped = input2(input2>min(input2(:))+0.2*est_rang & input2<max(input2(:))-0.2*est_rang);
 
-output =  b(1) + estimation.*b(2);
+input1_flat = input1_cropped;%%reshape(estimation_cropped', [size(estimation_cropped,1)*size(estimation_cropped,2) 1]);
+input2_flat = input2_cropped;%reshape(gt_cropped', [size(gt_cropped,1)*size(gt_cropped,2) 1]);
 
-minval = min(gt,[],'all');
-maxval = max(gt,[],'all');
+X = [ones(size(input1_flat)) input1_flat];
+b = X\input2_flat;    % Removes NaN data
 
-output(output>maxval)=maxval;
-output(output<minval)=minval;
+output =  b(1) + input1.*b(2);
 
-% 
-% if minval<0
-%     minval=0;
-% end
-% 
-% if maxval>65535
-%     maxval=65535;
-% end
-% output = rescale(output,minval,maxval);
+minval = min(output(:));
+maxval = max(output(:));
+ 
+if minval<min(input2(:))
+    minval=min(input2(:));
+end
+
+if maxval>max(input2(:))
+    maxval=max(input2(:));
+end
+output = rescale(output,minval,maxval);
 
 end
 

@@ -1,19 +1,22 @@
 clc;
 clear;
-
+close all;
 %% cropping input images
-
+testInd=3;
 visualize=true;
 
-select=3;
-datasets=["RedWeb","DeepLens","IBMS1"];
+select=1;
+datasets=["RedWeb","DeepLens","IBMS1","Tau"];
 
-datadir_cropped     = sprintf('results/%s/Depth_est_cropped',datasets(select)); 
-cropped_datadir     = sprintf('results/%s/Cropped_Estimation',datasets(select));
-gtdir       = sprintf('img/%s/Depth_cropped',datasets(select)); 
-cropped_imgdir       = sprintf('img/%s/Images_cropped',datasets(select)); 
+datadir_cropped     = sprintf('EstimatedDepth/%s/Depth_est_cropped',datasets(select)); 
+cropped_datadir     = sprintf('EstimatedDepth/%s/Cropped_Estimation',datasets(select));
+gtdir       = sprintf('BenchmarkData/%s/Depth_cropped',datasets(select)); 
+cropped_imgdir       = sprintf('BenchmarkData/%s/Images_cropped',datasets(select)); 
 
-resultsdir  = 'results'; %the directory for dumping results
+resultsdir  = 'Analysis'; %the directory for dumping results
+higherrorpath = sprintf('%s/%s/higherrors',resultsdir,datasets(select));
+mkdir(higherrorpath); 
+
 
 gtlist=dir(sprintf('%s/*.png', gtdir));
 depth_cropped_list = dir(sprintf('%s/*.png', datadir_cropped));
@@ -31,36 +34,32 @@ MI_error_cropped=[];
 MI_cropped_error=[];
 
 %% IBMS1
+eps = 0.0001;
 for i = 1:numel(gtlist)
-    
     % IBMS1 Load Data
     
-    image = double(imread(sprintf('%s/%s', cropped_imgdir, cropped_image_list(i).name)));
-    image = image*256;
+    image = im2double(imread(sprintf('%s/%s', cropped_imgdir, cropped_image_list(i).name)));
     
-    gt = double(imread(sprintf('%s/%s', gtdir, gtlist(i).name)));
+    gt = im2double(imread(sprintf('%s/%s', gtdir, gtlist(i).name)));
     if(size(gt,3)==3)
       gt = gt(:,:,1);
     end
-    if select==1 || select==3 %% redWeb is uint8
-        if select==1
-            gt =gt*256;
-        end
-       gt = 65535 - gt;
+    if select==1 || select==3 || select==4 %% redWeb is uint8
+       gt = imcomplement(gt);
     end
     gtNorm = gt;
     
-    est_cropped = double(imread(sprintf('%s/%s', datadir_cropped, depth_cropped_list(i).name)));
+    est_cropped = im2double(imread(sprintf('%s/%s', datadir_cropped, depth_cropped_list(i).name)));
     est_cropped_Norm = est_cropped;
     %est_cropped_Norm = mapper(est_cropped_Norm,gtNorm);
     %est_cropped_Norm = double(imhistmatch(uint16(est_cropped_Norm),uint16(gtNorm))); 
-    gtNorm = mapper(gtNorm,est_cropped_Norm);
-    gtNorm = double(imhistmatch(uint16(gtNorm),uint16(est_cropped_Norm)));
+    %gtNorm = mapper(gtNorm,est_cropped_Norm);
+    %gtNorm = double(imhistmatch(uint16(gtNorm),uint16(est_cropped_Norm)));
 
-    cropped_est = double(imread(sprintf('%s/%s', cropped_datadir, cropped_depth_list(i).name)));
+    cropped_est = im2double(imread(sprintf('%s/%s', cropped_datadir, cropped_depth_list(i).name)));
     cropped_est_Norm = cropped_est;
-    cropped_est_Norm = mapper(cropped_est_Norm,est_cropped_Norm);
-    cropped_est_Norm = double(imhistmatch(uint16(cropped_est_Norm),uint16(est_cropped_Norm)));
+    %cropped_est_Norm = mapper(cropped_est_Norm,gtNorm);
+    %cropped_est_Norm = double(imhistmatch(uint16(cropped_est_Norm),uint16(est_cropped_Norm)));
     % IBMS1 Error
     
     % RMSE
@@ -70,8 +69,8 @@ for i = 1:numel(gtlist)
     est_cropped_RMSE_error_image=est_cropped_Norm-gtNorm;
     cropped_est_RMSE_error_image=cropped_est_Norm-gtNorm;
 
-    RMSE_error_cropped =[RMSE_error_cropped,abs(est_cropped_RMSE_error)];
-    RMSE_cropped_error =[RMSE_cropped_error,abs(cropped_est_RMSE_error)];
+    RMSE_error_cropped =[RMSE_error_cropped,sqrt(est_cropped_RMSE_error)];
+    RMSE_cropped_error =[RMSE_cropped_error,sqrt(cropped_est_RMSE_error)];
     
     %PSNR
     
@@ -109,37 +108,51 @@ for i = 1:numel(gtlist)
 %     end
     
 
-    [~,est_cropped_SSIM_map] = ssim(est_cropped_Norm,gtNorm);
-    [~,cropped_est_SSIM_map] = ssim(cropped_est_Norm,gtNorm);
-    
-    [est_cropped_SSIM_error, cropped_est_SSIM_error]= DDR(gt,est_cropped,cropped_est,image);
+%     [est_cropped_SSIM_error,est_cropped_SSIM_map] = ssim(est_cropped_Norm,gtNorm);
+%     [cropped_est_SSIM_error,cropped_est_SSIM_map] = ssim(cropped_est_Norm,gtNorm);
+    est_cropped_SSIM_map = [];
+    cropped_est_SSIM_map = [];
+    points1 = [];
+    points2 = [];
+    [est_cropped_SSIM_error,points1,points2,cropped_est_SSIM_error]= DDR(gtNorm,est_cropped_Norm,cropped_est_Norm,image,i==testInd);
 
     SSIM_error_cropped=[SSIM_error_cropped,est_cropped_SSIM_error];
     SSIM_cropped_error=[SSIM_cropped_error,cropped_est_SSIM_error];
     %MI 
     
-    est_cropped_MI_error = mutInfo(round(est_cropped_Norm),round(gtNorm));
-    cropped_est_MI_error = mutInfo(round(cropped_est_Norm),round(gtNorm));
+    est_cropped_MI_error = mutInfo(double(im2uint16(est_cropped_Norm)),double(im2uint16(gtNorm)));
+    cropped_est_MI_error = mutInfo(double(im2uint16(cropped_est_Norm)),double(im2uint16(gtNorm)));
     
 
     MI_error_cropped=[MI_error_cropped,est_cropped_MI_error];
     MI_cropped_error=[MI_cropped_error,cropped_est_MI_error];
     
     % IBMS1 Visualization
-    if est_cropped_SSIM_error>cropped_est_SSIM_error
+    if  visualize && est_cropped_SSIM_error>cropped_est_SSIM_error && i==testInd
         figure('Name',sprintf('%s Middle outputs',datasets(select)))
-        montage({uint16(gtNorm),uint16(est_cropped_Norm), uint16(cropped_est_Norm),uint16(gt),uint16(abs(est_cropped_RMSE_error_image)),uint16(abs(cropped_est_RMSE_error_image)),uint16(est_cropped),est_cropped_SSIM_map,cropped_est_SSIM_map},'Size',[3 3]);
-%         figure('name','Histogram Gt')
-%         histogram(gtNorm)
-%         figure('name','Histogram Cropped Depth')
-%         histogram(cropped_est_Norm)
-%         figure('name','Histogram Depth of Cropped')
-%         histogram(est_cropped_Norm)
+        H = montage({gt,est_cropped_Norm,cropped_est_Norm,imadjust(gt),abs(est_cropped_RMSE_error_image),abs(cropped_est_RMSE_error_image),image,'',''},'Size',[3 3]);
+        imwrite(H.CData,sprintf('%s/%s_middleoutputs.png',higherrorpath,cropped_image_list(i).name));
+        figure('name','matched points Image');
+        H = showMatchedFeatures(image,gt,points1,points2);
+%         imwrite(H.CData,sprintf('%s/%d_matchedpoints_Image.png',analysispath,i));
+        figure('name','matched points GT')
+        H = showMatchedFeatures(gt,gt,points1,points2);
+%         imwrite(H.CData,sprintf('%s/%d_matchedpoints_GT.png',analysispath,i));
+        figure('name','matched points cropped estimation');
+        H = showMatchedFeatures(est_cropped,est_cropped,points1,points2);
+%         imwrite(H.CData,sprintf('%s/%d_matchedpoints_estcropped.png',analysispath,i))
+%         figure('name','Gt-est_cropped'); plot(gt(:), est_cropped(:), 'bd');
+%         figure('name','GtNorm-cropped_est_Norm'); plot(gtNorm(:), est_cropped_Norm(:), 'bd');
+%         figure('name','Gt-cropped_est'); plot(gt(:), cropped_est(:), 'bd');
+%         figure('name','gtNorm-est_cropped_Norm'); plot(gtNorm(:), cropped_est_Norm(:), 'bd');
+%         figure('name','Histogram Gt'); histogram(gtNorm);
+%         figure('name','Histogram Cropped Depth'); histogram(cropped_est_Norm);
+%         figure('name','Histogram Depth of Cropped'); histogram(est_cropped_Norm);
     end
       
 end
 
-%%ERROR VISUALIZATION
+%% ERROR VISUALIZATION
 figure('Name',sprintf('%s',datasets(select)))
 subplot(2,2,1);
 bar(1:length(RMSE_error_cropped),RMSE_error_cropped,'g');
@@ -157,7 +170,7 @@ subplot(2,2,3);
 bar(1:length(SSIM_error_cropped),SSIM_error_cropped,'g');
 hold on
 bar(1:length(SSIM_cropped_error),SSIM_cropped_error, 'r');
-title(sprintf('SSIM Performance: %0.1f',length(find(SSIM_error_cropped <= SSIM_cropped_error))/length(gtlist)*100));
+title(sprintf('SSIM Performance: %0.1f',length(find(SSIM_error_cropped < SSIM_cropped_error))/length(gtlist)*100));
 
 subplot(2,2,4);
 bar(1:length(MI_error_cropped),MI_error_cropped,'g');
